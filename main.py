@@ -1,0 +1,95 @@
+# disease_prediction_custom.py
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import io
+from google.colab import files
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+
+# Upload the dataset using Google Colab's file upload feature
+uploaded = files.upload()
+
+# Get the first filename from the uploaded dictionary
+filename = list(uploaded.keys())[0]  # Assuming only one file is uploaded
+
+# Read the uploaded file into a pandas DataFrame
+try:
+    df = pd.read_csv(io.BytesIO(uploaded[filename])) # Use the actual filename
+    print("File loaded successfully.")
+except KeyError:
+    print(f"File '{filename}' not found in uploaded files. Please upload the correct file.")
+    # You might want to handle this error differently based on your needs.
+    # For example, you could raise an exception to stop execution or provide a default dataset.
+    raise
+
+# ... (rest of your code remains the same) ...
+
+# Display basic info
+print("Dataset shape:", df.shape)
+print("Columns:", df.columns.tolist())
+
+# Preprocessing
+df.dropna(inplace=True)
+df.drop_duplicates(inplace=True)
+
+# Check if 'prognosis' column exists, if not, prompt for the correct column name
+if 'prognosis' not in df.columns:
+    print("Error: 'prognosis' column not found in the dataset. Please check your CSV file.")
+    target_column = input("Enter the name of the target column: ")
+    df.rename(columns={target_column: 'prognosis'}, inplace=True)
+else:
+    print("'prognosis' column found in the dataset.")
+
+# Encode the target column
+label_encoder = LabelEncoder()
+df['prognosis'] = label_encoder.fit_transform(df['prognosis'])
+
+# Split features and target
+X = df.drop('prognosis', axis=1)
+
+# One-hot encode categorical features
+encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+encoded_data = encoder.fit_transform(X)
+encoded_feature_names = encoder.get_feature_names_out(X.columns)
+X = pd.DataFrame(encoded_data, columns=encoded_feature_names)
+
+y = df['prognosis']
+
+# Split into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train the model
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Make predictions
+y_pred = model.predict(X_test)
+
+# Evaluation
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+# Confusion matrix
+plt.figure(figsize=(10, 6))
+sns.heatmap(confusion_matrix(y_test, y_pred), annot=False, cmap='Blues')
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+# Feature importance
+importances = model.feature_importances_
+indices = np.argsort(importances)[-10:]  # Top 10 important features
+
+plt.figure(figsize=(10, 6))
+plt.title("Top 10 Important Symptoms")
+plt.barh(range(len(indices)), importances[indices], align='center')
+plt.yticks(range(len(indices)), [X.columns[i] for i in indices])
+plt.xlabel("Feature Importance")
+plt.show()
