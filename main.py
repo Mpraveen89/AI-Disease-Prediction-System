@@ -11,6 +11,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.decomposition import PCA
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 required for 3D plots
 
 # Upload the dataset using Google Colab's file upload feature
 uploaded = files.upload()
@@ -20,15 +22,11 @@ filename = list(uploaded.keys())[0]  # Assuming only one file is uploaded
 
 # Read the uploaded file into a pandas DataFrame
 try:
-    df = pd.read_csv(io.BytesIO(uploaded[filename])) # Use the actual filename
+    df = pd.read_csv(io.BytesIO(uploaded[filename]))  # Use the actual filename
     print("File loaded successfully.")
 except KeyError:
-    print(f"File '{filename}' not found in uploaded files. Please upload the correct file.")
-    # You might want to handle this error differently based on your needs.
-    # For example, you could raise an exception to stop execution or provide a default dataset.
+    print(f"File '{filename}' not found in uploaded files.")
     raise
-
-# ... (rest of your code remains the same) ...
 
 # Display basic info
 print("Dataset shape:", df.shape)
@@ -38,7 +36,7 @@ print("Columns:", df.columns.tolist())
 df.dropna(inplace=True)
 df.drop_duplicates(inplace=True)
 
-# Check if 'prognosis' column exists, if not, prompt for the correct column name
+# Check if 'prognosis' column exists
 if 'prognosis' not in df.columns:
     print("Error: 'prognosis' column not found in the dataset. Please check your CSV file.")
     target_column = input("Enter the name of the target column: ")
@@ -83,7 +81,7 @@ plt.xlabel("Predicted")
 plt.ylabel("Actual")
 plt.show()
 
-# Feature importance
+# Feature importance - Bar chart
 importances = model.feature_importances_
 indices = np.argsort(importances)[-10:]  # Top 10 important features
 
@@ -92,4 +90,20 @@ plt.title("Top 10 Important Symptoms")
 plt.barh(range(len(indices)), importances[indices], align='center')
 plt.yticks(range(len(indices)), [X.columns[i] for i in indices])
 plt.xlabel("Feature Importance")
+plt.show()
+
+# 3D PCA plot
+pca = PCA(n_components=3)
+X_pca = pca.fit_transform(X)
+
+fig = plt.figure(figsize=(12, 8))
+ax = fig.add_subplot(111, projection='3d')
+scatter = ax.scatter(X_pca[:, 0], X_pca[:, 1], X_pca[:, 2],
+                     c=y, cmap='rainbow', edgecolor='k', s=40)
+ax.set_title("3D PCA Projection of Disease Data")
+ax.set_xlabel("PCA 1")
+ax.set_ylabel("PCA 2")
+ax.set_zlabel("PCA 3")
+legend = ax.legend(*scatter.legend_elements(), title="Classes")
+ax.add_artist(legend)
 plt.show()
